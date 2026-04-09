@@ -196,3 +196,120 @@ function findAvailableCourt(playingMatches, totalCourts) {
     
     return null;
 }
+// Drag and drop functionality
+function makeSortable() {
+    const waitingContainer = document.getElementById('waiting-matches');
+    
+    // Add drag event listeners to match cards
+    waitingContainer.addEventListener('dragover', handleDragOver);
+    waitingContainer.addEventListener('drop', handleDrop);
+}
+
+function createMatchElement(match) {
+    const div = document.createElement('div');
+    div.className = 'match-card';
+    div.draggable = match.status === 'Waiting';
+    div.dataset.matchId = match.id;
+    
+    if (match.status === 'Waiting') {
+        div.addEventListener('dragstart', handleDragStart);
+        div.addEventListener('dragend', handleDragEnd);
+    }
+    
+    div.innerHTML = `
+        ${match.status === 'Waiting' ? '<div class="drag-handle">⋮⋮</div>' : ''}
+        <div class="match-header">
+            <span class="match-id">Match ${match.id}</span>
+            ${match.court ? `<span class="court">Court ${match.court}</span>` : ''}
+            ${match.estimatedTime ? `<span class="time">${match.estimatedTime}</span>` : ''}
+        </div>
+        <div class="match-players">
+            <span>${match.player1}</span>
+            <span class="vs">vs</span>
+            <span>${match.player2}</span>
+        </div>
+        <div class="match-actions">
+            ${match.status === 'Playing' ? 
+                `<button onclick="openScoreModal(${match.id})" class="btn btn-small">Enter Score</button>` :
+                `<button onclick="moveToPlaying(${match.id})" class="btn btn-small btn-outline">Move to Playing</button>`
+            }
+        </div>
+    `;
+    return div;
+}
+
+let draggedElement = null;
+
+function handleDragStart(e) {
+    draggedElement = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.outerHTML);
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    draggedElement = null;
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    
+    const afterElement = getDragAfterElement(this, e.clientY);
+    const dragging = document.querySelector('.dragging');
+    
+    if (afterElement == null) {
+        this.appendChild(dragging);
+    } else {
+        this.insertBefore(dragging, afterElement);
+    }
+    
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    
+    // Update match order in data
+    updateMatchOrder();
+    return false;
+}
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.match-card:not(.dragging)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function updateMatchOrder() {
+    const waitingContainer = document.getElementById('waiting-matches');
+    const matchCards = [...waitingContainer.querySelectorAll('.match-card')];
+    
+    const matches = getMatches();
+    const playingCount = matches.filter(m => m.status === 'Playing').length;
+    const nextCount = matches.filter(m => m.status === 'Next').length;
+    
+    matchCards.forEach((card, index) => {
+        const matchId = parseInt(card.dataset.matchId);
+        const match = matches.find(m => m.id === matchId);
+        if (match) {
+            match.queueOrder = playingCount + nextCount + index + 1;
+        }
+    });
+    
+    saveMatches(matches);
+}
