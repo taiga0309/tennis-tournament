@@ -314,3 +314,246 @@ function updateMatchOrder() {
     saveMatches(matches);
 }
 js/bracket.js
+
+// Add these functions to your existing tournament.js file
+
+// League tournament creation
+function createLeagueTournament(name, playerNames, courts = 3, duration = 45) {
+    const tournament = {
+        id: 1,
+        name: name,
+        type: 'league',
+        courts: courts,
+        matchDuration: duration,
+        status: 'active',
+        createdDate: new Date().toISOString()
+    };
+
+    const players = playerNames.map((name, index) => ({
+        id: index + 1,
+        name: name,
+        status: 'active',
+        leaguePoints: 0,
+        matchesPlayed: 0,
+        matchesWon: 0
+    }));
+
+    const matches = generateRoundRobinMatches(players);
+
+    saveTournament(tournament);
+    savePlayers(players);
+    saveMatches(matches);
+    initializeMatchQueue(courts);
+
+    return tournament;
+}
+
+function createLeagueKnockoutTournament(name, playerNames, courts = 3, duration = 45) {
+    createLeagueTournament(name, playerNames, courts, duration);
+    const tournament = getTournament();
+    tournament.type = 'league-knockout';
+    tournament.leagueComplete = false;
+    saveTournament(tournament);
+    return tournament;
+}
+
+function generateRoundRobinMatches(players) {
+    const matches = [];
+    let matchId = 1;
+
+    for (let i = 0; i < players.length; i++) {
+        for (let j = i + 1; j < players.length; j++) {
+            matches.push({
+                id: matchId++,
+                player1: players[i].name,
+                player2: players[j].name,
+                status: 'Waiting',
+                queueOrder: matches.length + 1,
+                court: null,
+                score1: null,
+                score2: null,
+                winner: null,
+                round: 'League',
+                startTime: null,
+                endTime: null,
+                duration: null
+            });
+        }
+    }
+    return matches;
+}
+
+// Enhanced timing functions
+function startMatchTimer(matchId) {
+    const matches = getMatches();
+    const match = matches.find(m => m.id === matchId);
+    
+    if (match && !match.startTime) {
+        match.startTime = new Date().toISOString();
+        saveMatches(matches);
+    }
+}
+
+function endMatchTimer(matchId) {
+    const matches = getMatches();
+    const match = matches.find(m => m.id === matchId);
+    
+    if (match && match.startTime) {
+        match.endTime = new Date().toISOString();
+        match.duration = calculateMatchDuration(match.startTime, match.endTime);
+        saveMatches(matches);
+    }
+}
+
+function calculateMatchDuration(startTime, endTime) {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    return Math.round((end - start) / 60000);
+}
+
+function formatTime(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function getEstimatedWaitTime(queuePosition) {
+    const tournament = getTournament();
+    const avgMatchDuration = tournament.matchDuration || 45;
+    const courts = tournament.courts;
+    return Math.ceil(queuePosition / courts) * avgMatchDuration;
+}
+
+// Drag and drop functions
+let draggedElement = null;
+
+function makeSortable() {
+    const waitingContainer = document.getElementById('waiting-matches');
+    if (waitingContainer) {
+        waitingContainer.addEventListener('dragover', handleDragOver);
+        waitingContainer.addEventListener('drop', handleDrop);
+    }
+}
+
+function handleDragStart(e) {
+    draggedElement = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    draggedElement = null;
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) e.preventDefault();
+    
+    const afterElement = getDragAfterElement(this, e.clientY);
+    const dragging = document.querySelector('.dragging');
+    
+    if (afterElement == null) {
+        this.appendChild(dragging);
+    } else {
+        this.insertBefore(dragging, afterElement);
+    }
+    
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) e.stopPropagation();
+    updateMatchOrder();
+    return false;
+}
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.match-card:not(.dragging)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function updateMatchOrder() {
+    const waitingContainer = document.getElementById('waiting-matches');
+    const matchCards = [...waitingContainer.querySelectorAll('.match-card')];
+    
+    const matches = getMatches();
+    const playingCount = matches.filter(m => m.status === 'Playing').length;
+    const nextCount = matches.filter(m => m.status === 'Next').length;
+    
+    matchCards.forEach((card, index) => {
+        const matchId = parseInt(card.dataset.matchId);
+        const match = matches.find(m => m.id === matchId);
+        if (match) {
+            match.queueOrder = playingCount + nextCount + index + 1;
+        }
+    });
+    
+    saveMatches(matches);
+}
+
+// Update your existing submitMatchResult function to include timing
+function submitMatchResult(matchId, score1, score2) {
+    const matches = getMatches();
+    const match = matches.find(m => m.id === matchId);
+    
+    if (!match) return;
+
+    // End match timer
+    endMatchTimer(matchId);
+
+    // Update match
+    match.score1 = score1;
+    match.score2 = score2;
+    match.winner = score1 > score2 ? match.player1 : match.player2;
+    match.status = 'Done';
+    match.court = null;
+
+    // Update player stats for league
+    updatePlayerStats(match);
+
+    // Advance winner in knockout
+    advanceWinner(match);
+
+    // Reorder queue and start new match timers
+    reorderQueue();
+    
+    const playingMatches = matches.filter(m => m.status === 'Playing' && !m.startTime);
+    playingMatches.forEach(m => startMatchTimer(m.id));
+
+    saveMatches(matches);
+}
+
+function updatePlayerStats(match) {
+    const tournament = getTournament();
+    if (tournament.type === 'league' || tournament.type === 'league-knockout') {
+        const players = getPlayers();
+        const player1 = players.find(p => p.name === match.player1);
+        const player2 = players.find(p => p.name === match.player2);
+        
+        if (player1 && player2) {
+            player1.matchesPlayed++;
+            player2.matchesPlayed++;
+            
+            if (match.winner === match.player1) {
+                player1.matchesWon++;
+                player1.leaguePoints += 3;
+            } else {
+                player2.matchesWon++;
+                player2.leaguePoints += 3;
+            }
+            
+            savePlayers(players);
+        }
+    }
+}
