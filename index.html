@@ -1,1 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tennis Tournament Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🎾 Tennis Tournament Manager</h1>
+        
+        <div class="role-selection">
+            <div class="card">
+                <h2>Tournament Admin</h2>
+                <p>Manage matches, enter scores, control tournament flow</p>
+                <a href="admin.html" class="btn btn-primary">Admin Panel</a>
+            </div>
+            
+            <div class="card">
+                <h2>Player View</h2>
+                <p>View current matches, tournament bracket, and standings</p>
+                <a href="player.html" class="btn btn-secondary">Player View</a>
+            </div>
+        </div>
 
+        <div class="quick-setup">
+            <h3>Quick Setup</h3>
+            <button onclick="createSampleTournament()" class="btn btn-outline">
+                Create Sample Tournament
+            </button>
+        </div>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/tournament.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
