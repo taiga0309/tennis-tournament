@@ -5,51 +5,195 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Tennis Tournament</title>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Enhanced Admin Styles */
+        .sortable-list {
+            min-height: 50px;
+        }
 
-    <!-- Add this CSS to the head section -->
-<style>
-.sortable-list {
-    min-height: 50px;
-}
+        .match-card.dragging {
+            opacity: 0.5;
+            transform: rotate(2deg);
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
 
-.match-card.dragging {
-    opacity: 0.5;
-    transform: rotate(5deg);
-}
+        .match-card.drag-over {
+            border: 2px dashed #007bff;
+            background-color: #e3f2fd;
+        }
 
-.match-card.drag-over {
-    border: 2px dashed #007bff;
-    background-color: #e3f2fd;
-}
+        .drag-handle {
+            cursor: grab;
+            padding: 5px;
+            color: #6c757d;
+            font-size: 1.2rem;
+            user-select: none;
+            text-align: center;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 10px;
+        }
 
-.drag-handle {
-    cursor: grab;
-    padding: 5px;
-    color: #6c757d;
-}
+        .drag-handle:hover {
+            color: #007bff;
+            background-color: #f8f9fa;
+        }
 
-.drag-handle:hover {
-    color: #007bff;
-}
-</style>
+        .drag-handle:active {
+            cursor: grabbing;
+        }
 
-<!-- Update the waiting matches section -->
-<section class="match-section">
-    <h3>⏸️ Waiting Queue 
-        <small>(Drag to reorder)</small>
-    </h3>
-    <div id="waiting-matches" class="match-list sortable-list">
-        <!-- Waiting matches with drag handles -->
-    </div>
-</section>
+        .time-info {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 5px;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .match-timing {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-size: 0.9rem;
+        }
+
+        .match-timing p {
+            margin: 5px 0;
+        }
+
+        .export-section {
+            margin: 30px 0;
+            padding: 25px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stats-enhanced {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        .tournament-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .match-card {
+            transition: all 0.3s ease;
+            border: 2px solid #dee2e6;
+        }
+
+        .match-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .playing-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #28a745;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .queue-position {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            background: #007bff;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .emergency-controls {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .emergency-controls h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+
+        .refresh-indicator {
+            display: inline-block;
+            margin-left: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .refresh-indicator.show {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎾 Admin Panel</h1>
+            <h1>🎾 Admin Panel 
+                <span class="refresh-indicator" id="refresh-indicator">🔄</span>
+            </h1>
             <nav>
                 <a href="index.html">Home</a>
-                <a href="player.html">Player View</a>
+                <a href="register.html">New Tournament</a>
+                <a href="bracket.html">View Bracket</a>
             </nav>
         </header>
 
@@ -57,14 +201,40 @@
         <div class="tournament-info">
             <h2 id="tournament-name">Loading...</h2>
             <div class="stats">
+                <span>Type: <span id="tournament-type">-</span></span>
                 <span>Courts: <span id="court-count">0</span></span>
                 <span>Matches: <span id="match-progress">0/0</span></span>
             </div>
+            <div class="stats-enhanced">
+                <div class="stat-item">
+                    <span class="stat-number" id="avg-duration">0</span>
+                    <span class="stat-label">Avg Duration (min)</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="completed-matches">0</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="active-players">0</span>
+                    <span class="stat-label">Active Players</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="estimated-completion">-</span>
+                    <span class="stat-label">Est. Completion</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tournament Controls -->
+        <div class="tournament-controls">
+            <button onclick="refreshData()" class="btn btn-primary">🔄 Refresh</button>
+            <button onclick="pauseAllMatches()" class="btn btn-warning">⏸️ Pause All</button>
+            <button onclick="showEmergencyControls()" class="btn btn-secondary">🚨 Emergency</button>
         </div>
 
         <!-- Playing Matches -->
         <section class="match-section">
-            <h3>🏆 Currently Playing</h3>
+            <h3>🏆 Currently Playing (<span id="playing-count">0</span>)</h3>
             <div id="playing-matches" class="match-grid">
                 <!-- Matches will be populated by JavaScript -->
             </div>
@@ -72,7 +242,7 @@
 
         <!-- Next Matches -->
         <section class="match-section">
-            <h3>⏳ Up Next</h3>
+            <h3>⏳ Up Next (<span id="next-count">0</span>)</h3>
             <div id="next-matches" class="match-list">
                 <!-- Next matches will be populated -->
             </div>
@@ -80,9 +250,34 @@
 
         <!-- Waiting Queue -->
         <section class="match-section">
-            <h3>⏸️ Waiting Queue</h3>
-            <div id="waiting-matches" class="match-list">
+            <h3>⏸️ Waiting Queue (<span id="waiting-count">0</span>)
+                <small style="color: #6c757d;">- Drag matches to reorder</small>
+            </h3>
+            <div id="waiting-matches" class="match-list sortable-list">
                 <!-- Waiting matches -->
+            </div>
+        </section>
+
+        <!-- Emergency Controls (Hidden by default) -->
+        <div id="emergency-controls" class="emergency-controls" style="display: none;">
+            <h4>🚨 Emergency Controls</h4>
+            <div class="export-buttons">
+                <button onclick="resetTournament()" class="btn btn-danger">Reset Tournament</button>
+                <button onclick="skipMatch()" class="btn btn-warning">Skip Current Match</button>
+                <button onclick="undoLastResult()" class="btn btn-warning">Undo Last Result</button>
+                <button onclick="hideEmergencyControls()" class="btn btn-secondary">Hide</button>
+            </div>
+        </div>
+
+        <!-- Export & Reports Section -->
+        <section class="export-section">
+            <h3>📊 Export & Reports</h3>
+            <div class="export-buttons">
+                <button onclick="exportTournamentData()" class="btn btn-outline">📄 Export Data (JSON)</button>
+                <button onclick="exportBracketPDF()" class="btn btn-outline">🖨️ Print Bracket</button>
+                <button onclick="exportResults()" class="btn btn-outline">📈 Export Results (CSV)</button>
+                <button onclick="exportStatistics()" class="btn btn-outline">📊 Match Statistics</button>
+                <button onclick="exportLeagueTable()" class="btn btn-outline">🏆 League Table</button>
             </div>
         </section>
 
@@ -90,30 +285,44 @@
         <div id="score-modal" class="modal">
             <div class="modal-content">
                 <h3>Enter Match Result</h3>
+                <div class="match-timing">
+                    <p><strong>Match:</strong> <span id="modal-match-info"></span></p>
+                    <p><strong>Started:</strong> <span id="match-start-time">-</span></p>
+                    <p><strong>Duration:</strong> <span id="match-duration">-</span></p>
+                    <p><strong>Court:</strong> <span id="match-court">-</span></p>
+                </div>
                 <div class="score-form">
                     <div class="player-score">
                         <label id="player1-name">Player 1</label>
-                        <input type="number" id="score1" min="0" max="10">
+                        <input type="number" id="score1" min="0" max="99" placeholder="0">
                     </div>
                     <div class="vs">VS</div>
                     <div class="player-score">
                         <label id="player2-name">Player 2</label>
-                        <input type="number" id="score2" min="0" max="10">
+                        <input type="number" id="score2" min="0" max="99" placeholder="0">
                     </div>
                 </div>
                 <div class="modal-actions">
-                    <button onclick="submitScore()" class="btn btn-primary">Submit Result</button>
-                    <button onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button onclick="submitScore()" class="btn btn-primary">✅ Submit Result</button>
+                    <button onclick="submitWalkover()" class="btn btn-warning">🚶 Walkover</button>
+                    <button onclick="closeModal()" class="btn btn-secondary">❌ Cancel</button>
                 </div>
             </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;">
+            <div>🎾 Processing...</div>
         </div>
     </div>
 
     <script src="js/storage.js"></script>
     <script src="js/tournament.js"></script>
+    <script src="js/export.js"></script>
     <script>
-        // Admin-specific JavaScript
+        // Enhanced Admin JavaScript
         let currentMatchId = null;
+        let autoRefreshInterval = null;
 
         // Load and display tournament data
         function loadAdminView() {
@@ -125,9 +334,13 @@
             }
 
             document.getElementById('tournament-name').textContent = tournament.name;
+            document.getElementById('tournament-type').textContent = tournament.type.toUpperCase();
             document.getElementById('court-count').textContent = tournament.courts;
             
             updateMatchDisplays();
+            updateStatistics();
+            makeSortable();
+            startAutoRefresh();
         }
 
         function updateMatchDisplays() {
@@ -141,44 +354,104 @@
             // Sort matches by queue order
             matches.sort((a, b) => a.queueOrder - b.queueOrder);
 
-            matches.forEach(match => {
-                const matchElement = createMatchElement(match);
+            let playingCount = 0, nextCount = 0, waitingCount = 0;
+
+            matches.forEach((match, index) => {
+                const matchElement = createMatchElement(match, index);
                 
                 switch(match.status) {
                     case 'Playing':
                         document.getElementById('playing-matches').appendChild(matchElement);
+                        playingCount++;
                         break;
                     case 'Next':
                         document.getElementById('next-matches').appendChild(matchElement);
+                        nextCount++;
                         break;
                     case 'Waiting':
                         document.getElementById('waiting-matches').appendChild(matchElement);
+                        waitingCount++;
                         break;
                 }
             });
+
+            // Update counts
+            document.getElementById('playing-count').textContent = playingCount;
+            document.getElementById('next-count').textContent = nextCount;
+            document.getElementById('waiting-count').textContent = waitingCount;
+
+            // Update match progress
+            const totalMatches = matches.length;
+            const completedMatches = matches.filter(m => m.status === 'Done').length;
+            document.getElementById('match-progress').textContent = `${completedMatches}/${totalMatches}`;
         }
 
-        function createMatchElement(match) {
+        function createMatchElement(match, index) {
             const div = document.createElement('div');
             div.className = 'match-card';
+            div.draggable = match.status === 'Waiting';
+            div.dataset.matchId = match.id;
+            div.style.position = 'relative';
+            
+            if (match.status === 'Waiting') {
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragend', handleDragEnd);
+            }
+            
+            const timeInfo = getTimeInfo(match);
+            const queuePosition = match.status === 'Waiting' ? getQueuePosition(match.id) : null;
+            
             div.innerHTML = `
+                ${queuePosition ? `<div class="queue-position">${queuePosition}</div>` : ''}
+                ${match.status === 'Waiting' ? '<div class="drag-handle">⋮⋮ Drag to reorder</div>' : ''}
                 <div class="match-header">
-                    <span class="match-id">Match ${match.id}</span>
+                    <span class="match-id">
+                        ${match.status === 'Playing' ? '<span class="playing-indicator"></span>' : ''}
+                        Match ${match.id}
+                    </span>
                     ${match.court ? `<span class="court">Court ${match.court}</span>` : ''}
+                    ${match.round ? `<span class="round">${match.round}</span>` : ''}
                 </div>
                 <div class="match-players">
                     <span>${match.player1}</span>
                     <span class="vs">vs</span>
                     <span>${match.player2}</span>
                 </div>
+                ${timeInfo ? `<div class="time-info">${timeInfo}</div>` : ''}
                 <div class="match-actions">
                     ${match.status === 'Playing' ? 
-                        `<button onclick="openScoreModal(${match.id})" class="btn btn-small">Enter Score</button>` :
-                        `<button onclick="moveToPlaying(${match.id})" class="btn btn-small btn-outline">Move to Playing</button>`
+                        `<button onclick="openScoreModal(${match.id})" class="btn btn-small">📝 Enter Score</button>` :
+                        match.status === 'Next' ?
+                        `<button onclick="moveToPlaying(${match.id})" class="btn btn-small btn-primary">▶️ Start Match</button>` :
+                        `<button onclick="moveToPlaying(${match.id})" class="btn btn-small btn-outline">⬆️ Move to Playing</button>`
                     }
+                    <button onclick="showMatchOptions(${match.id})" class="btn btn-small btn-secondary">⚙️</button>
                 </div>
             `;
             return div;
+        }
+
+        function getTimeInfo(match) {
+            if (match.status === 'Playing' && match.startTime) {
+                const duration = Math.floor((new Date() - new Date(match.startTime)) / 60000);
+                const tournament = getTournament();
+                const expectedDuration = tournament.matchDuration || 45;
+                const overtime = duration > expectedDuration;
+                return `⏱️ ${duration} min ${overtime ? '(overtime)' : ''}`;
+            } else if (match.status === 'Waiting') {
+                const position = getQueuePosition(match.id);
+                const estimatedWait = getEstimatedWaitTime(position);
+                return `⏳ Est. wait: ${estimatedWait} min`;
+            } else if (match.status === 'Next') {
+                return '🔜 Ready to start';
+            }
+            return '';
+        }
+
+        function getQueuePosition(matchId) {
+            const matches = getMatches().filter(m => m.status === 'Waiting');
+            matches.sort((a, b) => a.queueOrder - b.queueOrder);
+            return matches.findIndex(m => m.id === matchId) + 1;
         }
 
         function openScoreModal(matchId) {
@@ -189,8 +462,23 @@
             document.getElementById('player2-name').textContent = match.player2;
             document.getElementById('score1').value = '';
             document.getElementById('score2').value = '';
+            document.getElementById('modal-match-info').textContent = `${match.player1} vs ${match.player2}`;
             
+            // Show timing info
+            if (match.startTime) {
+                document.getElementById('match-start-time').textContent = formatTime(match.startTime);
+                const duration = Math.floor((new Date() - new Date(match.startTime)) / 60000);
+                document.getElementById('match-duration').textContent = `${duration} minutes`;
+            } else {
+                document.getElementById('match-start-time').textContent = 'Not started';
+                document.getElementById('match-duration').textContent = '-';
+            }
+            
+            document.getElementById('match-court').textContent = match.court ? `Court ${match.court}` : 'No court assigned';
             document.getElementById('score-modal').style.display = 'block';
+            
+            // Focus on first score input
+            setTimeout(() => document.getElementById('score1').focus(), 100);
         }
 
         function closeModal() {
@@ -203,25 +491,269 @@
             const score2 = parseInt(document.getElementById('score2').value);
             
             if (isNaN(score1) || isNaN(score2)) {
-                alert('Please enter valid scores');
+                alert('Please enter valid scores for both players');
                 return;
             }
 
+            if (score1 === score2) {
+                if (!confirm('Scores are tied. Is this correct?')) {
+                    return;
+                }
+            }
+
+            showLoading();
+            
             // Submit the result
             submitMatchResult(currentMatchId, score1, score2);
+            
             closeModal();
             updateMatchDisplays();
+            updateStatistics();
+            
+            hideLoading();
+            showRefreshIndicator();
+        }
+
+        function submitWalkover() {
+            const match = getMatches().find(m => m.id === currentMatchId);
+            const winner = confirm(`Who wins by walkover?\n\nOK = ${match.player1}\nCancel = ${match.player2}`);
+            
+            if (winner) {
+                submitMatchResult(currentMatchId, 1, 0); // Player 1 wins
+            } else {
+                submitMatchResult(currentMatchId, 0, 1); // Player 2 wins
+            }
+            
+            closeModal();
+            updateMatchDisplays();
+            updateStatistics();
         }
 
         function moveToPlaying(matchId) {
-            // Manual override to move match to playing
             const tournament = getTournament();
-            moveMatchToPlaying(matchId, tournament.courts);
-            updateMatchDisplays();
+            const success = moveMatchToPlaying(matchId, tournament.courts);
+            
+            if (success) {
+                updateMatchDisplays();
+                showRefreshIndicator();
+            } else {
+                alert('Cannot move match to playing. All courts may be occupied.');
+            }
         }
+
+        function showMatchOptions(matchId) {
+            const match = getMatches().find(m => m.id === matchId);
+            const options = [
+                'Edit Players',
+                'Delete Match',
+                'Duplicate Match',
+                'View History'
+            ];
+            
+            const choice = prompt(`Match Options for Match ${matchId}:\n\n` + 
+                options.map((opt, i) => `${i + 1}. ${opt}`).join('\n') + 
+                '\n\nEnter option number:');
+            
+            if (choice) {
+                handleMatchOption(matchId, parseInt(choice));
+            }
+        }
+
+        function handleMatchOption(matchId, option) {
+            switch(option) {
+                case 1: // Edit Players
+                    editMatchPlayers(matchId);
+                    break;
+                case 2: // Delete Match
+                    deleteMatch(matchId);
+                    break;
+                case 3: // Duplicate Match
+                    duplicateMatch(matchId);
+                    break;
+                case 4: // View History
+                    viewMatchHistory(matchId);
+                    break;
+                default:
+                    alert('Invalid option');
+            }
+        }
+
+        function updateStatistics() {
+            const matches = getMatches();
+            const completedMatches = matches.filter(m => m.status === 'Done');
+            const playingMatches = matches.filter(m => m.status === 'Playing');
+            const players = getPlayers();
+            
+            // Completed matches
+            document.getElementById('completed-matches').textContent = completedMatches.length;
+            
+            // Average duration
+            const matchesWithDuration = completedMatches.filter(m => m.duration);
+            if (matchesWithDuration.length > 0) {
+                const avgDuration = Math.round(
+                    matchesWithDuration.reduce((sum, m) => sum + m.duration, 0) / matchesWithDuration.length
+                );
+                document.getElementById('avg-duration').textContent = avgDuration;
+            }
+            
+            // Active players
+            document.getElementById('active-players').textContent = players.filter(p => p.status === 'active').length;
+            
+            // Estimated completion
+            const remainingMatches = matches.filter(m => m.status !== 'Done').length;
+            const tournament = getTournament();
+            const avgMatchTime = tournament.matchDuration || 45;
+            const estimatedMinutes = Math.ceil(remainingMatches / tournament.courts) * avgMatchTime;
+            
+            if (remainingMatches > 0) {
+                const completionTime = new Date(Date.now() + estimatedMinutes * 60000);
+                document.getElementById('estimated-completion').textContent = 
+                    completionTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+                document.getElementById('estimated-completion').textContent = 'Complete!';
+            }
+        }
+
+        // Auto-refresh functionality
+        function startAutoRefresh() {
+            autoRefreshInterval = setInterval(() => {
+                updateMatchDisplays();
+                updateStatistics();
+            }, 30000); // Refresh every 30 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        function refreshData() {
+            showRefreshIndicator();
+            updateMatchDisplays();
+            updateStatistics();
+        }
+
+        function showRefreshIndicator() {
+            const indicator = document.getElementById('refresh-indicator');
+            indicator.classList.add('show');
+            setTimeout(() => indicator.classList.remove('show'), 1000);
+        }
+
+        function showLoading() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+
+        // Emergency controls
+        function showEmergencyControls() {
+            document.getElementById('emergency-controls').style.display = 'block';
+        }
+
+        function hideEmergencyControls() {
+            document.getElementById('emergency-controls').style.display = 'none';
+        }
+
+        function pauseAllMatches() {
+            if (confirm('Pause all playing matches? This will stop their timers.')) {
+                const matches = getMatches();
+                matches.filter(m => m.status === 'Playing').forEach(match => {
+                    match.status = 'Next';
+                    match.court = null;
+                });
+                saveMatches(matches);
+                updateMatchDisplays();
+                alert('All matches paused.');
+            }
+        }
+
+        function resetTournament() {
+            if (confirm('DANGER: Reset entire tournament? This will delete all data!')) {
+                if (confirm('Are you absolutely sure? This cannot be undone!')) {
+                    clearTournamentData();
+                    alert('Tournament reset. Redirecting to home page.');
+                    window.location.href = 'index.html';
+                }
+            }
+        }
+
+        function skipMatch() {
+            const playingMatches = getMatches().filter(m => m.status === 'Playing');
+            if (playingMatches.length === 0) {
+                alert('No matches currently playing.');
+                return;
+            }
+            
+            const matchId = parseInt(prompt('Enter Match ID to skip:'));
+            const match = playingMatches.find(m => m.id === matchId);
+            
+            if (match) {
+                if (confirm(`Skip match: ${match.player1} vs ${match.player2}?`)) {
+                    // Mark as completed with 0-0 score
+                    submitMatchResult(matchId, 0, 0);
+                    updateMatchDisplays();
+                    alert('Match skipped.');
+                }
+            } else {
+                alert('Match not found or not currently playing.');
+            }
+        }
+
+        function undoLastResult() {
+            const matches = getMatches();
+            const lastCompleted = matches
+                .filter(m => m.status === 'Done')
+                .sort((a, b) => new Date(b.endTime || 0) - new Date(a.endTime || 0))[0];
+            
+            if (!lastCompleted) {
+                alert('No completed matches to undo.');
+                return;
+            }
+            
+            if (confirm(`Undo result: ${lastCompleted.player1} ${lastCompleted.score1} - ${lastCompleted.score2} ${lastCompleted.player2}?`)) {
+                lastCompleted.status = 'Waiting';
+                lastCompleted.score1 = null;
+                lastCompleted.score2 = null;
+                lastCompleted.winner = null;
+                lastCompleted.endTime = null;
+                lastCompleted.duration = null;
+                
+                saveMatches(matches);
+                updateMatchDisplays();
+                alert('Last result undone.');
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'r':
+                        e.preventDefault();
+                        refreshData();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        exportTournamentData();
+                        break;
+                }
+            }
+            
+            if (e.key === 'Escape') {
+                closeModal();
+                hideEmergencyControls();
+            }
+        });
 
         // Initialize admin view
         document.addEventListener('DOMContentLoaded', loadAdminView);
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', stopAutoRefresh);
     </script>
 </body>
 </html>
