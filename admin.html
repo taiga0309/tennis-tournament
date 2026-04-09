@@ -5,6 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Tennis Tournament</title>
     <link rel="stylesheet" href="css/style.css">
+
+    <!-- Add this CSS to the head section -->
+<style>
+.sortable-list {
+    min-height: 50px;
+}
+
+.match-card.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+}
+
+.match-card.drag-over {
+    border: 2px dashed #007bff;
+    background-color: #e3f2fd;
+}
+
+.drag-handle {
+    cursor: grab;
+    padding: 5px;
+    color: #6c757d;
+}
+
+.drag-handle:hover {
+    color: #007bff;
+}
+</style>
+
+<!-- Update the waiting matches section -->
+<section class="match-section">
+    <h3>⏸️ Waiting Queue 
+        <small>(Drag to reorder)</small>
+    </h3>
+    <div id="waiting-matches" class="match-list sortable-list">
+        <!-- Waiting matches with drag handles -->
+    </div>
+</section>
 </head>
 <body>
     <div class="container">
