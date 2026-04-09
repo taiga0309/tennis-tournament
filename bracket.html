@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Bracket - Tennis Tournament</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/bracket.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎾 Tournament Bracket</h1>
+            <nav>
+                <a href="index.html">Home</a>
+                <a href="admin.html">Admin Panel</a>
+                <a href="player.html">Player View</a>
+            </nav>
+        </header>
+
+        <div class="bracket-container">
+            <div id="tournament-bracket">
+                <!-- Bracket will be generated here -->
+            </div>
+        </div>
+
+        <div class="bracket-legend">
+            <div class="legend-item">
+                <div class="match-status done"></div>
+                <span>Completed</span>
+            </div>
+            <div class="legend-item">
+                <div class="match-status playing"></div>
+                <span>Playing</span>
+            </div>
+            <div class="legend-item">
+                <div class="match-status next"></div>
+                <span>Up Next</span>
+            </div>
+            <div class="legend-item">
+                <div class="match-status waiting"></div>
+                <span>Waiting</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/tournament.js"></script>
+    <script src="js/bracket.js"></script>
+</body>
+</html>
